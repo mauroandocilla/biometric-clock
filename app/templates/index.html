@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ title or "Mi App Flask" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+
+<body>
+    <main>
+        <h1>¡Hola Flask! 🚀</h1>
+        <p>Starter “con todas las de ley”.</p>
+        <p><a href="{{ url_for('main.upload') }}">Subir un archivo .mdb</a></p>
+    </main>
+</body>
+
+</html>

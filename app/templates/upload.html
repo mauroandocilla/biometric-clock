@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ title or "Subir MDB" }}</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            margin: 2rem;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+        }
+
+        select,
+        input[type="file"],
+        button {
+            margin-top: 0.25rem;
+        }
+
+        ul {
+            color: #b00020;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Subir archivo .mdb</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <ul>
+        {% for category, msg in messages %}
+        <li><strong>{{ category }}:</strong> {{ msg }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
+    <form method="post" enctype="multipart/form-data">
+        <label>
+            Año
+            <select name="year" id="year" required>
+                {% for y in years %}
+                <option value="{{ y }}" {{ "selected" if y==current_year else "" }}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>
+            Mes
+            <select name="month" id="month" required>
+                {# Cargamos meses acorde al año actual inicialmente #}
+                {% set meses = months_initial %}
+                {% for m in meses %}
+                <option value="{{ m }}" {{ "selected" if m==current_month else "" }}>
+                    {{
+                    ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]
+                    }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>
+            Archivo .mdb
+            <input type="file" name="file" accept=".mdb" required />
+        </label>
+
+        <button type="submit">Subir y procesar</button>
+    </form>
+
+    <p><a href="{{ url_for('main.home') }}">Volver</a></p>
+
+    <script>
+        // Datos del servidor para validar meses
+        const CURRENT_YEAR = {{ current_year }};
+        const CURRENT_MONTH = {{ current_month }};
+        const yearSel = document.getElementById('year');
+        const monthSel = document.getElementById('month');
+
+        function monthName(m) {
+            const names = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            return names[m];
+        }
+
+        function rebuildMonths(limitToCurrent) {
+            const prev = parseInt(monthSel.value || "1", 10);
+            const max = limitToCurrent ? CURRENT_MONTH : 12;
+            monthSel.innerHTML = "";
+            for (let m = 1; m <= max; m++) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = monthName(m);
+                monthSel.appendChild(opt);
+            }
+            // Re-selecciona el mes si es válido, si no selecciona el máximo
+            const toSelect = Math.min(prev, max);
+            monthSel.value = String(toSelect);
+        }
+
+        yearSel.addEventListener('change', () => {
+            const y = parseInt(yearSel.value, 10);
+            rebuildMonths(y === CURRENT_YEAR);
+        });
+    </script>
+</body>
+
+</html>
