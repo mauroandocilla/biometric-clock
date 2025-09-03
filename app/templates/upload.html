@@ -1,111 +1,334 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" x-data>
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{{ title or "Subir MDB" }}</title>
+
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js (para lógica Headless-like) -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#4f46e5', 600: '#4338ca', 700: '#3730a3' }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body {
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            margin: 2rem;
+        .bg-glow {
+            background:
+                radial-gradient(1200px 600px at 80% -10%, rgba(79, 70, 229, .18), transparent 60%),
+                radial-gradient(1000px 600px at -10% 110%, rgba(16, 185, 129, .14), transparent 60%),
+                #0b0d12;
         }
 
-        label {
-            display: block;
-            margin-top: 1rem;
+        @media (prefers-color-scheme: light) {
+            .bg-glow {
+                background:
+                    radial-gradient(1200px 600px at 80% -10%, rgba(79, 70, 229, .12), transparent 60%),
+                    radial-gradient(1000px 600px at -10% 110%, rgba(16, 185, 129, .10), transparent 60%),
+                    #f6f7fb;
+            }
         }
 
-        select,
-        input[type="file"],
-        button {
-            margin-top: 0.25rem;
+        .terminal {
+            background: #0f172a;
+            color: #bbf7d0;
         }
 
-        ul {
-            color: #b00020;
+        @media (prefers-color-scheme: light) {
+            .terminal {
+                background: #0b1022;
+                color: #86efac;
+            }
+        }
+
+        @keyframes pingSoft {
+            0% {
+                box-shadow: 0 0 0 0 rgba(79, 70, 229, .25)
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(79, 70, 229, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(79, 70, 229, 0)
+            }
         }
     </style>
 </head>
 
-<body>
-    <h1>Subir archivo .mdb</h1>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased bg-glow px-4 py-10 md:py-16">
+    <div class="mx-auto w-full max-w-5xl">
+        <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl shadow-black/40">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-5 md:px-8">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-emerald-500 text-white font-bold shadow-xl">
+                        MDB</div>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-semibold tracking-tight">Exportar marcaciones desde archivo
+                            <code class="font-mono">.mdb</code>
+                        </h1>
+                        <p class="mt-1 text-sm text-zinc-400">Sube la base de Access y obtén un Excel filtrado por <span
+                                class="font-semibold text-zinc-200">año/mes</span>.</p>
+                    </div>
+                </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <ul>
-        {% for category, msg in messages %}
-        <li><strong>{{ category }}:</strong> {{ msg }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-    {% endwith %}
+                <!-- Botón que abre Dialog (Headless-like) -->
+                <button x-data="{ open:false }" @click="open=true"
+                    class="rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 px-3 py-2 text-sm text-zinc-200"
+                    x-init="$watch('open', v => { if (!v) return })">
+                    ¿Cómo funciona?
+                    <!-- Dialog -->
+                    <template x-teleport="body">
+                        <div x-show="open" x-transition.opacity @keydown.escape.window="open=false"
+                            class="fixed inset-0 z-50" aria-labelledby="dialog-title" role="dialog" aria-modal="true">
+                            <!-- Overlay -->
+                            <div class="fixed inset-0 bg-black/60" @click="open=false"></div>
 
-    <form method="post" enctype="multipart/form-data">
-        <label>
-            Año
-            <select name="year" id="year" required>
-                {% for y in years %}
-                <option value="{{ y }}" {{ "selected" if y==current_year else "" }}>{{ y }}</option>
-                {% endfor %}
-            </select>
-        </label>
+                            <!-- Panel -->
+                            <div class="fixed inset-0 flex items-center justify-center p-4">
+                                <div x-show="open" x-transition
+                                    class="w-full max-w-lg rounded-2xl bg-zinc-900 border border-white/10 text-zinc-100 shadow-2xl">
+                                    <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                                        <h2 id="dialog-title" class="text-base font-semibold">¿Cómo funciona la
+                                            exportación?</h2>
+                                        <button @click="open=false"
+                                            class="text-zinc-400 hover:text-zinc-200">&times;</button>
+                                    </div>
+                                    <div class="px-5 py-4 text-sm text-zinc-300 space-y-2">
+                                        <p>1) Sube el <strong>.mdb</strong> del reloj biométrico.</p>
+                                        <p>2) Selecciona <strong>año</strong> y <strong>mes</strong> (no permite meses
+                                            futuros del año actual).</p>
+                                        <p>3) Verás el <strong>progreso en tiempo real</strong> y al finalizar se
+                                            descargará un Excel.</p>
+                                        <p>4) La exportación se realiza en tiempo real y se transforma a Excel
+                                            en el servidor.</p>
+                                        <p>5) Se descarga el Excel automáticamente.</p>
+                                    </div>
+                                    <div class="px-5 py-4 border-t border-white/10 flex justify-end">
+                                        <button @click="open=false"
+                                            class="rounded-lg bg-primary px-4 py-2 text-white font-medium">Entendido</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </button>
+            </div>
 
-        <label>
-            Mes
-            <select name="month" id="month" required>
-                {# Cargamos meses acorde al año actual inicialmente #}
-                {% set meses = months_initial %}
-                {% for m in meses %}
-                <option value="{{ m }}" {{ "selected" if m==current_month else "" }}>
-                    {{
-                    ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]
-                    }}
-                </option>
-                {% endfor %}
-            </select>
-        </label>
+            <div class="p-6 md:p-8 pt-4">
+                <!-- Form -->
+                <form id="uploader" enctype="multipart/form-data" novalidate class="grid grid-cols-12 gap-4">
+                    <!-- Año -->
+                    <div class="col-span-12 md:col-span-6">
+                        <label for="year" class="block text-xs uppercase tracking-wide text-zinc-400 mb-2">Año</label>
+                        <select id="year" name="year" required
+                            class="w-full rounded-xl border border-white/10 bg-zinc-900 text-zinc-100 px-4 py-3 outline-none focus:border-primary focus:ring-4 ring-primary/15">
+                            {% for y in years %}
+                            <option value="{{ y }}" {{ "selected" if y==current_year else "" }}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-        <label>
-            Archivo .mdb
-            <input type="file" name="file" accept=".mdb" required />
-        </label>
+                    <!-- Mes -->
+                    <div class="col-span-12 md:col-span-6">
+                        <label for="month" class="block text-xs uppercase tracking-wide text-zinc-400 mb-2">Mes</label>
+                        <select id="month" name="month" required
+                            class="w-full rounded-xl border border-white/10 bg-zinc-900 text-zinc-100 px-4 py-3 outline-none focus:border-primary focus:ring-4 ring-primary/15">
+                            {% set meses = months_initial %}
+                            {% for m in meses %}
+                            <option value="{{ m }}" {{ "selected" if m==current_month else "" }}>
+                                {{
+                                ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]
+                                }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-        <button type="submit">Subir y procesar</button>
-    </form>
+                    <!-- Archivo -->
+                    <div class="col-span-12">
+                        <label for="file" class="block text-xs uppercase tracking-wide text-zinc-400 mb-2">Archivo
+                            .mdb</label>
+                        <label
+                            class="flex items-center gap-3 rounded-xl border-2 border-dashed border-white/10 bg-zinc-900/70 px-4 py-4 cursor-pointer hover:border-primary/60 transition">
+                            <input id="file" type="file" name="file" accept=".mdb" required class="hidden" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" viewBox="0 0 24 24"
+                                fill="currentColor">
+                                <path
+                                    d="M12 16a1 1 0 0 1-1-1V8.41l-1.3 1.29a1 1 0 1 1-1.4-1.42l3-3a1 1 0 0 1 1.4 0l3 3a1 1 0 1 1-1.4 1.42L13 8.4V15a1 1 0 0 1-1 1Zm-7 4a3 3 0 0 1-3-3v-2a1 1 0 0 1 2 0v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2a1 1 0 1 1 2 0v2a3 3 0 0 1-3 3H5Z" />
+                            </svg>
+                            <span class="text-sm text-zinc-300">Haz clic para seleccionar o arrastra y suelta
+                                aquí</span>
+                            <span id="fileName" class="ml-auto text-xs text-zinc-400"></span>
+                        </label>
+                    </div>
 
-    <p><a href="{{ url_for('main.home') }}">Volver</a></p>
+                    <!-- Acciones -->
+                    <div class="col-span-12 flex flex-wrap items-center gap-3">
+                        <button id="submitBtn" type="submit"
+                            class="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-600 active:bg-primary-700 text-white font-semibold px-4 py-3 shadow-lg shadow-primary/30 disabled:opacity-60 disabled:cursor-not-allowed transition">
+                            <svg id="spinner" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z">
+                                </path>
+                            </svg>
+                            <span id="btnText">Subir y procesar</span>
+                        </button>
+
+                        <div id="statusIdle" class="flex items-center gap-2 text-sm text-zinc-400">
+                            <span class="h-2.5 w-2.5 rounded-full bg-amber-400"
+                                style="animation: pingSoft 1.8s ease infinite;"></span>
+                            Esperando archivo…
+                        </div>
+                        <div id="statusWorking" class="hidden items-center gap-2 text-sm text-zinc-300">
+                            <span class="h-2.5 w-2.5 rounded-full bg-primary"
+                                style="animation: pingSoft 1.8s ease infinite;"></span>
+                            Procesando…
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Disclosure (Headless-like) para Progreso -->
+                <section x-data="{ open: true }" class="mt-6 overflow-hidden rounded-xl border border-white/10">
+                    <button @click="open=!open" :aria-expanded="open"
+                        class="w-full flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5 text-left">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Progreso</h3>
+                        <svg :class="{'rotate-180': open}" class="h-4 w-4 text-zinc-400 transition-transform"
+                            viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse>
+                        <pre id="log"
+                            class="terminal m-0 p-4 min-h-[160px] text-sm leading-relaxed whitespace-pre-wrap"></pre>
+                    </div>
+                </section>
+
+                <!-- Descarga -->
+                <div id="download" class="mt-4"></div>
+
+                <!-- Footer -->
+                <div class="mt-6 text-center">
+                    <a href="{{ url_for('main.home') }}"
+                        class="text-sm text-zinc-400 hover:text-zinc-200 underline underline-offset-4">← Volver</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Datos del servidor para validar meses
+        // Mostrar nombre de archivo seleccionado
+        const fileInput = document.getElementById('file');
+        const fileNameEl = document.getElementById('fileName');
+        fileInput.addEventListener('change', () => {
+            const f = fileInput.files?.[0];
+            fileNameEl.textContent = f ? f.name : '';
+        });
+
+        // Lógica Año/Mes (bloquear meses futuros del año actual)
         const CURRENT_YEAR = {{ current_year }};
         const CURRENT_MONTH = {{ current_month }};
         const yearSel = document.getElementById('year');
         const monthSel = document.getElementById('month');
-
-        function monthName(m) {
-            const names = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            return names[m];
-        }
-
+        function monthName(m) { return ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][m]; }
         function rebuildMonths(limitToCurrent) {
             const prev = parseInt(monthSel.value || "1", 10);
             const max = limitToCurrent ? CURRENT_MONTH : 12;
             monthSel.innerHTML = "";
             for (let m = 1; m <= max; m++) {
                 const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = monthName(m);
+                opt.value = m; opt.textContent = monthName(m);
                 monthSel.appendChild(opt);
             }
-            // Re-selecciona el mes si es válido, si no selecciona el máximo
-            const toSelect = Math.min(prev, max);
-            monthSel.value = String(toSelect);
+            monthSel.value = String(Math.min(prev, max));
+        }
+        yearSel.addEventListener('change', () => rebuildMonths(parseInt(yearSel.value, 10) === CURRENT_YEAR));
+
+        // UI helpers
+        const form = document.getElementById('uploader');
+        const logEl = document.getElementById('log');
+        const dlEl = document.getElementById('download');
+        const btn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+        const statusIdle = document.getElementById('statusIdle');
+        const statusWorking = document.getElementById('statusWorking');
+        const taskIdEl = document.getElementById('taskId');
+
+        function logLine(t) { logEl.textContent += t + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+        function setWorking(on) {
+            if (on) {
+                btn.setAttribute('disabled', 'true'); spinner.classList.remove('hidden');
+                btnText.textContent = "Procesando…";
+                statusIdle.classList.add('hidden');
+                statusWorking.classList.remove('hidden');
+            } else {
+                btn.removeAttribute('disabled'); spinner.classList.add('hidden');
+                btnText.textContent = "Subir y procesar";
+                statusIdle.classList.remove('hidden');
+                statusWorking.classList.add('hidden');
+            }
         }
 
-        yearSel.addEventListener('change', () => {
-            const y = parseInt(yearSel.value, 10);
-            rebuildMonths(y === CURRENT_YEAR);
+        // SSE + fetch
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            logEl.textContent = ""; dlEl.innerHTML = ""; if (taskIdEl) taskIdEl.textContent = "";
+            setWorking(true);
+
+            const data = new FormData(form);
+            logLine("📤 Subiendo archivo…");
+
+            let resp, json;
+            try {
+                resp = await fetch("/upload", { method: "POST", body: data });
+                json = await resp.json();
+            } catch {
+                logLine("❌ Error de red o respuesta inválida");
+                setWorking(false);
+                return;
+            }
+
+            if (!json.ok) {
+                logLine("❌ " + (json.error || "Fallo en la subida"));
+                setWorking(false);
+                return;
+            }
+
+            if (taskIdEl) taskIdEl.textContent = "Tarea: " + json.task_id;
+            logLine("⚙️ Tarea creada: " + json.task_id);
+
+            const es = new EventSource(json.events_url);
+            es.addEventListener("message", (ev) => logLine("ℹ️ " + ev.data));
+            es.addEventListener("error", () => {
+                logLine("❌ Error en stream");
+                es.close();
+                setWorking(false);
+            });
+            es.addEventListener("done", () => {
+                logLine("✔ Listo. Descargando Excel…");
+                es.close();
+                setWorking(false);
+                window.location = json.download_url; // descarga automática
+            });
+            es.addEventListener("ping", () => { });
         });
     </script>
 </body>

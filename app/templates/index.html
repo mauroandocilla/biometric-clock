@@ -1,18 +1,98 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" x-data="{open:false}">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ title or "Mi App Flask" }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <title>{{ title or "IESS CheckInOut" }}</title>
+
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#4f46e5', 600: '#4338ca', 700: '#3730a3' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .bg-glow {
+            background:
+                radial-gradient(1200px 600px at 80% -10%, rgba(79, 70, 229, .18), transparent 60%),
+                radial-gradient(1000px 600px at -10% 110%, rgba(16, 185, 129, .14), transparent 60%),
+                #0b0d12;
+        }
+
+        @media (prefers-color-scheme: light) {
+            .bg-glow {
+                background:
+                    radial-gradient(1200px 600px at 80% -10%, rgba(79, 70, 229, .12), transparent 60%),
+                    radial-gradient(1000px 600px at -10% 110%, rgba(16, 185, 129, .10), transparent 60%),
+                    #f6f7fb;
+            }
+        }
+    </style>
 </head>
 
-<body>
-    <main>
-        <h1>¡Hola Flask! 🚀</h1>
-        <p>Starter “con todas las de ley”.</p>
-        <p><a href="{{ url_for('main.upload') }}">Subir un archivo .mdb</a></p>
+<body class="min-h-screen text-zinc-100 antialiased grid place-items-center p-8 bg-glow">
+    <main
+        class="w-full max-w-xl rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl shadow-black/40 px-8 py-10 text-center">
+        <h1 class="m-0 text-2xl md:text-3xl font-semibold tracking-tight">¡Hola IESS CheckInOut! 🚀</h1>
+        <p class="mt-3 text-zinc-400 text-sm md:text-base">
+            Sube un archivo <span class="font-semibold text-zinc-200">.mdb</span> para procesar y obtener tu Excel
+            filtrado.
+        </p>
+
+        <div class="mt-8 flex items-center justify-center gap-3">
+            <a href="{{ url_for('main.upload') }}"
+                class="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-600 active:bg-primary-700 text-white font-semibold px-5 py-3 shadow-lg shadow-primary/30 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 -ml-1" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 16a1 1 0 0 1-1-1V8.41l-1.3 1.29a1 1 0 1 1-1.4-1.42l3-3a1 1 0 0 1 1.4 0l3 3a1 1 0 1 1-1.4 1.42L13 8.4V15a1 1 0 0 1-1 1Zm-7 4a3 3 0 0 1-3-3v-2a1 1 0 0 1 2 0v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2a1 1 0 1 1 2 0v2a3 3 0 0 1-3 3H5Z" />
+                </svg>
+                Subir un archivo .mdb
+            </a>
+
+            <!-- Botón que abre Dialog (Headless-like) -->
+            <button @click="open=true"
+                class="rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 px-4 py-3 text-sm text-zinc-200">
+                ¿Qué hace esta app?
+            </button>
+        </div>
+
+        <!-- Dialog -->
+        <div x-show="open" x-transition.opacity @keydown.escape.window="open=false" class="fixed inset-0 z-50"
+            aria-labelledby="dialog-index-title" role="dialog" aria-modal="true" style="display:none">
+            <div class="fixed inset-0 bg-black/60" @click="open=false"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4">
+                <div x-show="open" x-transition
+                    class="w-full max-w-lg rounded-2xl bg-zinc-900 border border-white/10 text-zinc-100 shadow-2xl">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                        <h2 id="dialog-index-title" class="text-base font-semibold">Acerca de IESS CheckInOut</h2>
+                        <button @click="open=false" class="text-zinc-400 hover:text-zinc-200">&times;</button>
+                    </div>
+                    <div class="px-5 py-4 text-sm text-zinc-300 space-y-2">
+                        <p>Convierte un <strong>.mdb</strong> de reloj biométrico (USERINFO + CHECKINOUT) en un
+                            <strong>Excel</strong> ordenado por <em>Nombre</em> y <em>Fecha</em>.
+                        </p>
+                        <p>Filtra por <strong>año/mes</strong> y ve el <strong>progreso en vivo</strong> durante el
+                            procesamiento.</p>
+                    </div>
+                    <div class="px-5 py-4 border-t border-white/10 flex justify-end">
+                        <button @click="open=false"
+                            class="rounded-lg bg-primary px-4 py-2 text-white font-medium">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 </body>
 
