@@ -14,7 +14,6 @@ from datetime import datetime
 import gc
 
 from .services.mdb_export_stream import export_mdb_to_csv_stream
-from .services.mdb_export import export_mdb_to_csv  # fallback
 
 bp = Blueprint("main", __name__)
 ALLOWED_EXTENSIONS = {".mdb"}  # añade ".accdb" si quieres
@@ -83,8 +82,8 @@ def upload():
     flash(f"Archivo subido: {mdb_path}", "success")
 
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    csv_name = f"{mdb_path.stem}_inout_{sel_year:04d}-{sel_month:02d}_{ts}.csv"
-    csv_path = upload_dir / csv_name
+    xlsx_name = f"{mdb_path.stem}_inout_{sel_year:04d}-{sel_month:02d}_{ts}.xlsx"
+    xlsx_path = upload_dir / xlsx_name
 
     try:
         current_app.logger.info(
@@ -97,34 +96,22 @@ def upload():
             f"Procesando MDB (stream): {mdb_path} (year={sel_year}, month={sel_month})",
             "info",
         )
-        export_mdb_to_csv_stream(mdb_path, csv_path, year=sel_year, month=sel_month)
-        current_app.logger.info("CSV generado (stream): %s", csv_path)
-        flash(f"CSV generado (stream): {csv_path}", "success")
-    except Exception:
-        current_app.logger.exception(
-            "Fallo stream, intentando fallback con pandas/pyodbc"
-        )
-        try:
-            # fallback también filtrará por año/mes (ver siguiente sección)
-            export_mdb_to_csv(mdb_path, csv_path, year=sel_year, month=sel_month)
-            flash(
-                f"Procesando MDB (fallback pandas): {mdb_path} (year={sel_year}, month={sel_month})",
-                "info",
-            )
-            current_app.logger.info("CSV generado (fallback pandas): %s", csv_path)
-            flash(f"CSV generado (fallback pandas): {csv_path}", "success")
-        except Exception as e_fb:
-            current_app.logger.exception("Error procesando MDB")
-            flash(f"Error procesando MDB: {e_fb}", "error")
-            return redirect(request.url)
+        export_mdb_to_csv_stream(mdb_path, xlsx_path, year=sel_year, month=sel_month)
+        current_app.logger.info("Excel generado (stream): %s", xlsx_path)
+        flash(f"Excel generado (stream): {xlsx_path}", "success")
+    except Exception as e:
+        current_app.logger.exception("Error procesando MDB")
+        flash(f"Error procesando MDB: {e}", "error")
+        return redirect(request.url)
     finally:
         gc.collect()
 
+    # 👉 devuelve .xlsx con el MIME correcto
     return send_file(
-        csv_path,
+        xlsx_path,
         as_attachment=True,
-        download_name=csv_name,
-        mimetype="text/csv",
+        download_name=xlsx_name,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         max_age=0,
         conditional=True,
     )
