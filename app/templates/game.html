@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="zh">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>早安</title>
+
+    <style>
+        :root {
+            color-scheme: dark light;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overscroll-behavior: none;
+        }
+
+        body {
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            color: #f4f1ea;
+            background:
+                radial-gradient(1100px 650px at 50% -12%, rgba(244, 158, 66, .16), transparent 60%),
+                radial-gradient(900px 600px at 100% 115%, rgba(220, 68, 68, .12), transparent 60%),
+                radial-gradient(900px 600px at 0% 115%, rgba(79, 70, 229, .10), transparent 60%),
+                #1b212c;
+        }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                background:
+                    radial-gradient(1100px 650px at 50% -12%, rgba(244, 158, 66, .20), transparent 60%),
+                    radial-gradient(900px 600px at 100% 115%, rgba(220, 68, 68, .14), transparent 60%),
+                    radial-gradient(900px 600px at 0% 115%, rgba(79, 70, 229, .12), transparent 60%),
+                    #6b7a91;
+            }
+        }
+
+        .stage {
+            position: relative;
+            width: min(94vw, 640px);
+            aspect-ratio: 3 / 4;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .08);
+            background: rgba(255, 255, 255, .03);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        .hud {
+            position: absolute;
+            top: 14px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-variant-numeric: tabular-nums;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: .02em;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+            pointer-events: none;
+        }
+
+        .hud .best {
+            opacity: .55;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hud .best::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: .6;
+        }
+
+        .play-icon {
+            width: 0;
+            height: 0;
+            margin: 0 auto;
+            border-style: solid;
+            border-width: 16px 0 16px 26px;
+            border-color: transparent transparent transparent rgba(244, 241, 234, .9);
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            padding: 24px;
+            background: rgba(15, 18, 24, .45);
+            backdrop-filter: blur(2px);
+            transition: opacity .2s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .overlay .score-line {
+            margin-top: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            opacity: .85;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .overlay .score-line span.sep {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: .5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stage" id="stage">
+        <canvas id="c"></canvas>
+        <div class="hud">
+            <span id="score">0</span>
+            <span class="best"><span id="best">0</span></span>
+        </div>
+        <div class="overlay" id="overlay">
+            <div>
+                <div class="play-icon"></div>
+                <p class="score-line" id="overlayScore" style="display:none"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const stage = document.getElementById('stage');
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d');
+            const overlay = document.getElementById('overlay');
+            const overlayScore = document.getElementById('overlayScore');
+            const scoreEl = document.getElementById('score');
+            const bestEl = document.getElementById('best');
+
+            const STORAGE_KEY = 'biometric-clock-game-best';
+            let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
+            bestEl.textContent = best;
+
+            let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+            function resize() {
+                const rect = stage.getBoundingClientRect();
+                W = rect.width;
+                H = rect.height;
+                canvas.width = W * DPR;
+                canvas.height = H * DPR;
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            const player = { x: 0, y: 0, r: 22, vx: 0, lives: 3 };
+            let drops = [];
+            let running = false;
+            let over = true;
+            let score = 0;
+            let spawnTimer = 0;
+            let spawnEvery = 900;
+            let fallSpeed = 140;
+            let lastT = 0;
+            let keys = { left: false, right: false };
+            let pointerX = null;
+
+            function resetGame() {
+                player.x = W / 2;
+                player.y = H - 46;
+                player.lives = 3;
+                drops = [];
+                score = 0;
+                spawnTimer = 0;
+                spawnEvery = 900;
+                fallSpeed = 140;
+                scoreEl.textContent = '0';
+            }
+
+            function spawnDrop() {
+                const isGood = Math.random() < 0.68;
+                drops.push({
+                    x: 24 + Math.random() * (W - 48),
+                    y: -20,
+                    r: isGood ? 11 : 10,
+                    good: isGood,
+                    vy: fallSpeed + Math.random() * 40,
+                    wob: Math.random() * Math.PI * 2,
+                });
+            }
+
+            function drawBear(x, y, r) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.fillStyle = '#f4a94a';
+                ctx.beginPath();
+                ctx.arc(-r * 0.62, -r * 0.68, r * 0.38, 0, Math.PI * 2);
+                ctx.arc(r * 0.62, -r * 0.68, r * 0.38, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#dc4444';
+                ctx.beginPath();
+                ctx.ellipse(0, r * 0.28, r * 0.62, r * 0.42, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2a1b12';
+                ctx.beginPath();
+                ctx.arc(-r * 0.32, -r * 0.12, r * 0.09, 0, Math.PI * 2);
+                ctx.arc(r * 0.32, -r * 0.12, r * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, r * 0.05, r * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawHoney(x, y, r, t) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(Math.sin(t) * 0.15);
+                ctx.fillStyle = '#f4a94a';
+                ctx.beginPath();
+                ctx.moveTo(0, -r);
+                ctx.quadraticCurveTo(r, -r * 0.4, r * 0.6, r * 0.6);
+                ctx.quadraticCurveTo(0, r * 1.1, -r * 0.6, r * 0.6);
+                ctx.quadraticCurveTo(-r, -r * 0.4, 0, -r);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,.35)';
+                ctx.beginPath();
+                ctx.arc(-r * 0.25, -r * 0.15, r * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawBee(x, y, r, t) {
+                ctx.save();
+                ctx.translate(x, y);
+                const wob = Math.sin(t * 20) * 3;
+                ctx.translate(0, wob);
+                ctx.fillStyle = '#f4d43a';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#1b212c';
+                ctx.lineWidth = Math.max(1.5, r * 0.22);
+                ctx.beginPath();
+                ctx.moveTo(-r * 0.55, -r * 0.5);
+                ctx.lineTo(-r * 0.15, r * 0.5);
+                ctx.moveTo(r * 0.15, -r * 0.5);
+                ctx.lineTo(r * 0.55, r * 0.5);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,.6)';
+                ctx.beginPath();
+                ctx.ellipse(-r * 0.1, -r * 0.9, r * 0.5, r * 0.28, -0.3, 0, Math.PI * 2);
+                ctx.ellipse(r * 0.7, -r * 0.7, r * 0.4, r * 0.24, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function endGame() {
+                running = false;
+                over = true;
+                if (score > best) {
+                    best = score;
+                    localStorage.setItem(STORAGE_KEY, String(best));
+                    bestEl.textContent = best;
+                }
+                overlayScore.innerHTML = score + '<span class="sep"></span>' + best;
+                overlayScore.style.display = 'flex';
+                overlay.classList.remove('hidden');
+            }
+
+            function startGame() {
+                resetGame();
+                over = false;
+                running = true;
+                overlay.classList.add('hidden');
+                lastT = performance.now();
+                requestAnimationFrame(loop);
+            }
+
+            function loop(t) {
+                if (!running) return;
+                const dt = Math.min(40, t - lastT);
+                lastT = t;
+
+                if (pointerX !== null) {
+                    player.x += (pointerX - player.x) * 0.25;
+                } else {
+                    const speed = 0.42 * dt;
+                    if (keys.left) player.x -= speed;
+                    if (keys.right) player.x += speed;
+                }
+                player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+
+                spawnTimer += dt;
+                if (spawnTimer >= spawnEvery) {
+                    spawnTimer = 0;
+                    spawnDrop();
+                    spawnEvery = Math.max(340, spawnEvery - 6);
+                    fallSpeed = Math.min(420, fallSpeed + 2.5);
+                }
+
+                for (let i = drops.length - 1; i >= 0; i--) {
+                    const d = drops[i];
+                    d.y += d.vy * dt / 1000;
+                    d.wob += dt / 1000;
+                    d.x += Math.sin(d.wob) * (d.good ? 0.15 : 0.4);
+
+                    const dx = d.x - player.x, dy = d.y - player.y;
+                    const rr = (d.r + player.r * 0.82);
+                    if (dx * dx + dy * dy < rr * rr) {
+                        drops.splice(i, 1);
+                        if (d.good) {
+                            score += 1;
+                            scoreEl.textContent = score;
+                        } else {
+                            player.lives -= 1;
+                            if (player.lives <= 0) {
+                                endGame();
+                                return;
+                            }
+                        }
+                        continue;
+                    }
+                    if (d.y - d.r > H) drops.splice(i, 1);
+                }
+
+                ctx.clearRect(0, 0, W, H);
+
+                ctx.strokeStyle = 'rgba(255,255,255,.08)';
+                ctx.beginPath();
+                ctx.moveTo(0, H - 20);
+                ctx.lineTo(W, H - 20);
+                ctx.stroke();
+
+                for (const d of drops) {
+                    if (d.good) drawHoney(d.x, d.y, d.r, d.wob);
+                    else drawBee(d.x, d.y, d.r, d.wob);
+                }
+
+                drawBear(player.x, player.y, player.r);
+
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(W - 18 - i * 20, 20, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = i < player.lives ? '#dc4444' : 'rgba(255,255,255,.15)';
+                    ctx.fill();
+                }
+
+                requestAnimationFrame(loop);
+            }
+
+            function tryStart() {
+                if (over) startGame();
+            }
+
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+                if (e.code === 'Space') { e.preventDefault(); tryStart(); }
+            });
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+            });
+
+            function setPointerFromEvent(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+                pointerX = clientX - rect.left;
+            }
+
+            canvas.addEventListener('pointerdown', (e) => { setPointerFromEvent(e); tryStart(); });
+            canvas.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') setPointerFromEvent(e); });
+            canvas.addEventListener('touchstart', (e) => { setPointerFromEvent(e); tryStart(); }, { passive: true });
+            canvas.addEventListener('touchmove', (e) => { setPointerFromEvent(e); }, { passive: true });
+            window.addEventListener('pointerup', () => { pointerX = null; });
+            window.addEventListener('touchend', () => { pointerX = null; });
+
+            overlay.addEventListener('click', tryStart);
+
+            resetGame();
+            drawBear(player.x, player.y, player.r);
+        })();
+    </script>
+</body>
+
+</html>

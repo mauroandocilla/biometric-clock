@@ -31,6 +31,7 @@ def allowed_file(filename: str) -> bool:
 def block_when_paused():
     if current_app.config.get("MAINTENANCE_MODE") and request.endpoint not in (
         "main.home",
+        "main.game",
         "static",
     ):
         return render_template("maintenance.html"), 503
@@ -41,6 +42,11 @@ def home():
     if current_app.config.get("MAINTENANCE_MODE"):
         return render_template("maintenance.html")
     return render_template("index.html", title="Home")
+
+
+@bp.route("/game")
+def game():
+    return render_template("game.html")
 
 
 # --- Infra simple en memoria para SSE ---
