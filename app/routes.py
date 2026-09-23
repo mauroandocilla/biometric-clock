@@ -33,13 +33,13 @@ def block_when_paused():
         "main.home",
         "static",
     ):
-        return render_template("maintenance.html", title="En pausa"), 503
+        return render_template("maintenance.html"), 503
 
 
 @bp.route("/")
 def home():
     if current_app.config.get("MAINTENANCE_MODE"):
-        return render_template("maintenance.html", title="En pausa")
+        return render_template("maintenance.html")
     return render_template("index.html", title="Home")
 
 
