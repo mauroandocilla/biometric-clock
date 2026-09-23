@@ -195,21 +195,21 @@
             let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
             bestEl.textContent = best;
 
-            const TARGET_H = 150;
+            const TARGET_H = 220;
             let W = 0, H = 0, PIXEL = 4;
 
             function resize() {
                 const rect = stage.getBoundingClientRect();
                 PIXEL = Math.max(2, Math.round(rect.height / TARGET_H));
-                W = Math.max(60, Math.round(rect.width / PIXEL));
-                H = Math.max(60, Math.round(rect.height / PIXEL));
+                W = Math.max(80, Math.round(rect.width / PIXEL));
+                H = Math.max(80, Math.round(rect.height / PIXEL));
                 canvas.width = W;
                 canvas.height = H;
                 ctx.imageSmoothingEnabled = false;
-                player.y = H - player.r - 2;
+                player.y = H - player.r - 3;
             }
 
-            const player = { x: 0, y: 0, r: 9, lives: 3 };
+            const player = { x: 0, y: 0, r: 13, lives: 3 };
             let drops = [];
             let particles = [];
             let shake = 0;
@@ -219,7 +219,7 @@
             let score = 0;
             let spawnTimer = 0;
             let spawnEvery = 900;
-            let fallSpeed = 42;
+            let fallSpeed = 60;
             let lastT = 0;
             let keys = { left: false, right: false };
             let pointerX = null;
@@ -229,7 +229,7 @@
 
             function resetGame() {
                 player.x = W / 2;
-                player.y = H - player.r - 2;
+                player.y = H - player.r - 3;
                 player.lives = 3;
                 drops = [];
                 particles = [];
@@ -238,23 +238,23 @@
                 score = 0;
                 spawnTimer = 0;
                 spawnEvery = 900;
-                fallSpeed = 42;
+                fallSpeed = 60;
                 scoreEl.textContent = '0';
             }
 
             function spawnDrop() {
                 const isGood = Math.random() < 0.68;
-                const baseX = 14 + Math.random() * (W - 28);
+                const baseX = 20 + Math.random() * (W - 40);
                 drops.push({
                     baseX,
                     x: baseX,
-                    y: -10,
-                    r: isGood ? 6 : 6.5,
+                    y: -14,
+                    r: isGood ? 9 : 9.5,
                     good: isGood,
-                    vy: fallSpeed + Math.random() * 10,
+                    vy: fallSpeed + Math.random() * 14,
                     t: Math.random() * Math.PI * 2,
                     freq: isGood ? (0.9 + Math.random() * 0.4) : (1.3 + Math.random() * 0.5),
-                    amp: isGood ? (5 + Math.random() * 3) : (8 + Math.random() * 5),
+                    amp: isGood ? (7 + Math.random() * 4) : (12 + Math.random() * 7),
                 });
             }
 
@@ -262,7 +262,7 @@
                 const n = good ? 8 : 18;
                 for (let i = 0; i < n; i++) {
                     const a = (Math.PI * 2 * i) / n + Math.random() * 0.5;
-                    const speed = good ? (14 + Math.random() * 8) : (26 + Math.random() * 34);
+                    const speed = good ? (20 + Math.random() * 12) : (38 + Math.random() * 50);
                     particles.push({
                         x, y,
                         vx: Math.cos(a) * speed,
@@ -270,7 +270,7 @@
                         life: 1,
                         maxLife: good ? 0.55 : (0.7 + Math.random() * 0.4),
                         good,
-                        size: good ? (2 + Math.random() * 1.2) : (2.5 + Math.random() * 3),
+                        size: good ? (3 + Math.random() * 1.8) : (3.6 + Math.random() * 4.4),
                         rot: Math.random() * Math.PI * 2,
                         vr: (Math.random() - 0.5) * (good ? 8 : 20),
                     });
@@ -278,22 +278,26 @@
             }
 
             function drawBear(x, y, r) {
-                const X = Math.round(x), Y = Math.round(y), R = Math.round(r);
+                const X = Math.round(x), Y = Math.round(y);
                 ctx.fillStyle = FG;
                 ctx.beginPath();
-                ctx.arc(X - R * 0.66, Y - R * 0.72, R * 0.32, 0, Math.PI * 2);
-                ctx.arc(X + R * 0.66, Y - R * 0.72, R * 0.32, 0, Math.PI * 2);
-                ctx.arc(X, Y, R, 0, Math.PI * 2);
+                ctx.arc(X - r * 0.62, Y - r * 0.68, r * 0.34, 0, Math.PI * 2);
+                ctx.arc(X + r * 0.62, Y - r * 0.68, r * 0.34, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(X, Y, r, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = BG;
                 ctx.beginPath();
-                ctx.arc(X, Y + R * 0.12, R * 0.4, 0, Math.PI * 2);
+                ctx.ellipse(X, Y + r * 0.2, r * 0.46, r * 0.36, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = FG;
                 ctx.beginPath();
-                ctx.arc(X - R * 0.16, Y, R * 0.08, 0, Math.PI * 2);
-                ctx.arc(X + R * 0.16, Y, R * 0.08, 0, Math.PI * 2);
-                ctx.arc(X, Y + R * 0.22, R * 0.1, 0, Math.PI * 2);
+                ctx.arc(X - r * 0.2, Y + r * 0.02, r * 0.09, 0, Math.PI * 2);
+                ctx.arc(X + r * 0.2, Y + r * 0.02, r * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(X, Y + r * 0.26, r * 0.12, r * 0.08, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
 
@@ -317,22 +321,41 @@
             }
 
             function drawBee(x, y, r, t) {
-                const flutter = Math.sin(t * 5) * 1.1;
+                const flutter = Math.sin(t * 4) * 1.2;
                 const X = Math.round(x), Y = Math.round(y + flutter);
                 ctx.save();
                 ctx.translate(X, Y);
+
                 ctx.fillStyle = BG;
-                ctx.beginPath();
-                ctx.arc(-r * 0.6, -r * 0.35, r * 0.42, 0, Math.PI * 2);
-                ctx.arc(r * 0.6, -r * 0.35, r * 0.42, 0, Math.PI * 2);
-                ctx.fill();
+                function wing(s) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -r * 0.1);
+                    ctx.quadraticCurveTo(s * r * 1.05, -r * 1.05, s * r * 0.18, -r * 0.18);
+                    ctx.quadraticCurveTo(s * r * 0.32, -r * 0.6, 0, -r * 0.1);
+                    ctx.fill();
+                }
+                wing(-1);
+                wing(1);
+
                 ctx.fillStyle = FG;
                 ctx.beginPath();
-                ctx.ellipse(0, 0, r * 0.72, r * 0.6, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, r * 0.64, r * 0.82, 0, 0, Math.PI * 2);
                 ctx.fill();
+
                 ctx.fillStyle = BG;
-                ctx.fillRect(-r * 0.72, -r * 0.16, r * 1.44, r * 0.22);
-                ctx.fillRect(-r * 0.72, r * 0.16, r * 1.44, r * 0.22);
+                ctx.fillRect(-r * 0.64, -r * 0.14, r * 1.28, r * 0.18);
+                ctx.fillRect(-r * 0.64, r * 0.22, r * 1.28, r * 0.18);
+
+                ctx.strokeStyle = FG;
+                ctx.lineWidth = Math.max(1, r * 0.1);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-r * 0.12, -r * 0.74);
+                ctx.lineTo(-r * 0.32, -r * 1.1);
+                ctx.moveTo(r * 0.12, -r * 0.74);
+                ctx.lineTo(r * 0.32, -r * 1.1);
+                ctx.stroke();
+
                 ctx.restore();
             }
 
@@ -405,7 +428,7 @@
                 if (pointerX !== null) {
                     player.x += (pointerX - player.x) * 0.2;
                 } else {
-                    const speed = 0.05 * dt;
+                    const speed = 0.07 * dt;
                     if (keys.left) player.x -= speed;
                     if (keys.right) player.x += speed;
                 }
@@ -416,7 +439,7 @@
                     spawnTimer = 0;
                     spawnDrop();
                     spawnEvery = Math.max(340, spawnEvery - 6);
-                    fallSpeed = Math.min(115, fallSpeed + 0.8);
+                    fallSpeed = Math.min(165, fallSpeed + 1.1);
                 }
 
                 for (let i = drops.length - 1; i >= 0; i--) {
@@ -453,7 +476,7 @@
                     if (p.life <= 0) { particles.splice(i, 1); continue; }
                     p.x += p.vx * dts;
                     p.y += p.vy * dts;
-                    p.vy += (p.good ? 10 : 26) * dts;
+                    p.vy += (p.good ? 14 : 36) * dts;
                     p.rot += p.vr * dts;
                 }
 
@@ -462,7 +485,7 @@
                 if (shake > 0) shake = Math.max(0, shake - dts * 3);
                 ctx.save();
                 if (shake > 0) {
-                    ctx.translate((Math.random() - 0.5) * 9 * shake, (Math.random() - 0.5) * 9 * shake);
+                    ctx.translate((Math.random() - 0.5) * 13 * shake, (Math.random() - 0.5) * 13 * shake);
                 }
 
                 for (const d of drops) {
@@ -481,16 +504,16 @@
                 ctx.globalAlpha = 1;
                 ctx.restore();
 
-                const livesW = 3 * 5 + 2 * 5;
+                const livesW = 3 * 7 + 2 * 8;
                 for (let i = 0; i < 3; i++) {
-                    const lx = Math.round(W / 2 - livesW / 2 + i * 10);
+                    const lx = Math.round(W / 2 - livesW / 2 + i * 15);
                     if (i < player.lives) {
                         ctx.fillStyle = FG;
-                        ctx.fillRect(lx, 6, 5, 5);
+                        ctx.fillRect(lx, 8, 7, 7);
                     } else {
                         ctx.strokeStyle = FG;
                         ctx.globalAlpha = 0.35;
-                        ctx.strokeRect(lx, 6, 5, 5);
+                        ctx.strokeRect(lx, 8, 7, 7);
                         ctx.globalAlpha = 1;
                     }
                 }
@@ -502,13 +525,6 @@
                     ctx.fillRect(0, 0, W, H);
                     ctx.globalCompositeOperation = 'source-over';
                 }
-
-                const frame = ctx.getImageData(0, 0, W, H);
-                const px = frame.data;
-                for (let i = 3; i < px.length; i += 4) {
-                    px[i] = px[i] < 140 ? 0 : 255;
-                }
-                ctx.putImageData(frame, 0, 0);
 
                 requestAnimationFrame(loop);
             }
