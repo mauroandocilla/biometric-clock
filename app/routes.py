@@ -34,13 +34,13 @@ def block_when_paused():
         "main.game",
         "static",
     ):
-        return render_template("maintenance.html"), 503
+        return render_template("game.html"), 503
 
 
 @bp.route("/")
 def home():
     if current_app.config.get("MAINTENANCE_MODE"):
-        return render_template("maintenance.html")
+        return render_template("game.html")
     return render_template("index.html", title="Home")
 
 
