@@ -8,7 +8,8 @@
 
     <style>
         :root {
-            color-scheme: dark light;
+            --bg: #f7f7f7;
+            --fg: #404040;
         }
 
         * {
@@ -26,23 +27,9 @@
             display: grid;
             place-items: center;
             overflow: hidden;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            color: #f4f1ea;
-            background:
-                radial-gradient(1100px 650px at 50% -12%, rgba(244, 158, 66, .16), transparent 60%),
-                radial-gradient(900px 600px at 100% 115%, rgba(220, 68, 68, .12), transparent 60%),
-                radial-gradient(900px 600px at 0% 115%, rgba(79, 70, 229, .10), transparent 60%),
-                #1b212c;
-        }
-
-        @media (prefers-color-scheme: light) {
-            body {
-                background:
-                    radial-gradient(1100px 650px at 50% -12%, rgba(244, 158, 66, .20), transparent 60%),
-                    radial-gradient(900px 600px at 100% 115%, rgba(220, 68, 68, .14), transparent 60%),
-                    radial-gradient(900px 600px at 0% 115%, rgba(79, 70, 229, .12), transparent 60%),
-                    #6b7a91;
-            }
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+            color: var(--fg);
+            background: var(--bg);
         }
 
         .stage {
@@ -58,6 +45,9 @@
             width: 100%;
             height: 100%;
             touch-action: none;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
         }
 
         .hud {
@@ -70,15 +60,14 @@
             align-items: center;
             font-variant-numeric: tabular-nums;
             font-size: 15px;
-            font-weight: 600;
-            letter-spacing: .02em;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+            font-weight: 700;
+            letter-spacing: .04em;
             pointer-events: none;
         }
 
         .hud .best {
             opacity: .55;
-            font-weight: 500;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -86,9 +75,8 @@
 
         .hud .best::before {
             content: "";
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: 6px;
+            height: 6px;
             background: currentColor;
             opacity: .6;
         }
@@ -99,8 +87,7 @@
             margin: 0 auto;
             border-style: solid;
             border-width: 16px 0 16px 26px;
-            border-color: transparent transparent transparent rgba(244, 241, 234, .9);
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
+            border-color: transparent transparent transparent var(--fg);
         }
 
         .overlay {
@@ -110,8 +97,7 @@
             place-items: center;
             text-align: center;
             padding: 24px;
-            background: rgba(15, 18, 24, .45);
-            backdrop-filter: blur(2px);
+            background: rgba(247, 247, 247, .55);
             transition: opacity .2s ease;
         }
 
@@ -123,7 +109,7 @@
         .overlay .score-line {
             margin-top: 14px;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             font-variant-numeric: tabular-nums;
             opacity: .85;
             display: flex;
@@ -135,7 +121,6 @@
         .overlay .score-line span.sep {
             width: 4px;
             height: 4px;
-            border-radius: 50%;
             background: currentColor;
             opacity: .5;
         }
@@ -167,124 +152,179 @@
             const scoreEl = document.getElementById('score');
             const bestEl = document.getElementById('best');
 
+            const FG = '#404040';
+            const BG = '#f7f7f7';
             const STORAGE_KEY = 'biometric-clock-game-best';
             let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
             bestEl.textContent = best;
 
-            let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+            const TARGET_H = 150;
+            let W = 0, H = 0, PIXEL = 4;
 
             function resize() {
                 const rect = stage.getBoundingClientRect();
-                W = rect.width;
-                H = rect.height;
-                canvas.width = W * DPR;
-                canvas.height = H * DPR;
-                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                PIXEL = Math.max(2, Math.round(rect.height / TARGET_H));
+                W = Math.max(60, Math.round(rect.width / PIXEL));
+                H = Math.max(60, Math.round(rect.height / PIXEL));
+                canvas.width = W;
+                canvas.height = H;
+                ctx.imageSmoothingEnabled = false;
+                player.y = H - 16;
             }
-            window.addEventListener('resize', resize);
-            resize();
 
-            const player = { x: 0, y: 0, r: 22, vx: 0, lives: 3 };
+            const player = { x: 0, y: 0, r: 9, lives: 3 };
             let drops = [];
+            let particles = [];
             let running = false;
             let over = true;
             let score = 0;
             let spawnTimer = 0;
             let spawnEvery = 900;
-            let fallSpeed = 140;
+            let fallSpeed = 42;
             let lastT = 0;
             let keys = { left: false, right: false };
             let pointerX = null;
 
+            window.addEventListener('resize', resize);
+            resize();
+
             function resetGame() {
                 player.x = W / 2;
-                player.y = H - 46;
+                player.y = H - 16;
                 player.lives = 3;
                 drops = [];
+                particles = [];
                 score = 0;
                 spawnTimer = 0;
                 spawnEvery = 900;
-                fallSpeed = 140;
+                fallSpeed = 42;
                 scoreEl.textContent = '0';
             }
 
             function spawnDrop() {
                 const isGood = Math.random() < 0.68;
+                const baseX = 10 + Math.random() * (W - 20);
                 drops.push({
-                    x: 24 + Math.random() * (W - 48),
-                    y: -20,
-                    r: isGood ? 11 : 10,
+                    baseX,
+                    x: baseX,
+                    y: -8,
+                    r: isGood ? 4.5 : 4.5,
                     good: isGood,
-                    vy: fallSpeed + Math.random() * 40,
-                    wob: Math.random() * Math.PI * 2,
+                    vy: fallSpeed + Math.random() * 10,
+                    t: Math.random() * Math.PI * 2,
+                    freq: isGood ? (0.9 + Math.random() * 0.4) : (1.3 + Math.random() * 0.5),
+                    amp: isGood ? (5 + Math.random() * 3) : (8 + Math.random() * 5),
                 });
             }
 
+            function spawnBurst(x, y, good) {
+                const n = good ? 8 : 7;
+                for (let i = 0; i < n; i++) {
+                    const a = (Math.PI * 2 * i) / n + Math.random() * 0.5;
+                    const speed = good ? (14 + Math.random() * 8) : (20 + Math.random() * 16);
+                    particles.push({
+                        x, y,
+                        vx: Math.cos(a) * speed,
+                        vy: Math.sin(a) * speed,
+                        life: 1,
+                        maxLife: good ? 0.55 : 0.65,
+                        good,
+                        size: good ? (2 + Math.random() * 1.2) : (2.2 + Math.random() * 1.8),
+                        rot: Math.random() * Math.PI * 2,
+                        vr: (Math.random() - 0.5) * 8,
+                    });
+                }
+            }
+
             function drawBear(x, y, r) {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.fillStyle = '#f4a94a';
+                const X = Math.round(x), Y = Math.round(y), R = Math.round(r);
+                ctx.fillStyle = FG;
                 ctx.beginPath();
-                ctx.arc(-r * 0.62, -r * 0.68, r * 0.38, 0, Math.PI * 2);
-                ctx.arc(r * 0.62, -r * 0.68, r * 0.38, 0, Math.PI * 2);
+                ctx.arc(X - R * 0.6, Y - R * 0.7, R * 0.36, 0, Math.PI * 2);
+                ctx.arc(X + R * 0.6, Y - R * 0.7, R * 0.36, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.arc(X, Y, R, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#dc4444';
+                ctx.fillStyle = BG;
                 ctx.beginPath();
-                ctx.ellipse(0, r * 0.28, r * 0.62, r * 0.42, 0, 0, Math.PI * 2);
+                ctx.arc(X - R * 0.34, Y - R * 0.08, R * 0.13, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#2a1b12';
-                ctx.beginPath();
-                ctx.arc(-r * 0.32, -r * 0.12, r * 0.09, 0, Math.PI * 2);
-                ctx.arc(r * 0.32, -r * 0.12, r * 0.09, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(0, r * 0.05, r * 0.1, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
             }
 
             function drawHoney(x, y, r, t) {
+                const X = Math.round(x), Y = Math.round(y);
                 ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(Math.sin(t) * 0.15);
-                ctx.fillStyle = '#f4a94a';
+                ctx.translate(X, Y);
+                ctx.rotate(Math.sin(t * 0.6) * 0.12);
+                ctx.fillStyle = FG;
                 ctx.beginPath();
                 ctx.moveTo(0, -r);
-                ctx.quadraticCurveTo(r, -r * 0.4, r * 0.6, r * 0.6);
-                ctx.quadraticCurveTo(0, r * 1.1, -r * 0.6, r * 0.6);
-                ctx.quadraticCurveTo(-r, -r * 0.4, 0, -r);
+                ctx.quadraticCurveTo(r, -r * 0.3, r * 0.55, r * 0.6);
+                ctx.quadraticCurveTo(0, r * 1.05, -r * 0.55, r * 0.6);
+                ctx.quadraticCurveTo(-r, -r * 0.3, 0, -r);
                 ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,.35)';
+                ctx.fillStyle = BG;
                 ctx.beginPath();
-                ctx.arc(-r * 0.25, -r * 0.15, r * 0.2, 0, Math.PI * 2);
+                ctx.arc(-r * 0.22, -r * 0.1, r * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
 
             function drawBee(x, y, r, t) {
+                const flutter = Math.sin(t * 5) * 1.2;
+                const X = Math.round(x), Y = Math.round(y + flutter);
                 ctx.save();
-                ctx.translate(x, y);
-                const wob = Math.sin(t * 20) * 3;
-                ctx.translate(0, wob);
-                ctx.fillStyle = '#f4d43a';
+                ctx.translate(X, Y);
+                ctx.fillStyle = BG;
+                ctx.strokeStyle = FG;
+                ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
+                ctx.ellipse(-r * 0.55, -r * 0.55, r * 0.5, r * 0.28, -0.4, 0, Math.PI * 2);
+                ctx.ellipse(r * 0.55, -r * 0.55, r * 0.5, r * 0.28, 0.4, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = '#1b212c';
-                ctx.lineWidth = Math.max(1.5, r * 0.22);
-                ctx.beginPath();
-                ctx.moveTo(-r * 0.55, -r * 0.5);
-                ctx.lineTo(-r * 0.15, r * 0.5);
-                ctx.moveTo(r * 0.15, -r * 0.5);
-                ctx.lineTo(r * 0.55, r * 0.5);
                 ctx.stroke();
-                ctx.fillStyle = 'rgba(255,255,255,.6)';
+                ctx.fillStyle = FG;
                 ctx.beginPath();
-                ctx.ellipse(-r * 0.1, -r * 0.9, r * 0.5, r * 0.28, -0.3, 0, Math.PI * 2);
-                ctx.ellipse(r * 0.7, -r * 0.7, r * 0.4, r * 0.24, 0.3, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, r, r * 0.68, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = BG;
+                ctx.fillRect(-r * 0.65, -r * 0.14, r * 0.35, r * 0.3);
+                ctx.fillRect(r * 0.05, -r * 0.14, r * 0.35, r * 0.3);
+                ctx.restore();
+            }
+
+            function drawStar(x, y, r, rot) {
+                ctx.save();
+                ctx.translate(Math.round(x), Math.round(y));
+                ctx.rotate(rot);
+                ctx.fillStyle = FG;
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const a = (Math.PI / 4) * i;
+                    const rad = i % 2 === 0 ? r : r * 0.4;
+                    const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawSplat(x, y, r, rot) {
+                ctx.save();
+                ctx.translate(Math.round(x), Math.round(y));
+                ctx.rotate(rot);
+                ctx.fillStyle = FG;
+                ctx.beginPath();
+                const spikes = 6;
+                for (let i = 0; i < spikes * 2; i++) {
+                    const a = (Math.PI / spikes) * i;
+                    const rad = i % 2 === 0 ? r : r * 0.15;
+                    const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
                 ctx.fill();
                 ctx.restore();
             }
@@ -315,11 +355,12 @@
                 if (!running) return;
                 const dt = Math.min(40, t - lastT);
                 lastT = t;
+                const dts = dt / 1000;
 
                 if (pointerX !== null) {
-                    player.x += (pointerX - player.x) * 0.25;
+                    player.x += (pointerX - player.x) * 0.2;
                 } else {
-                    const speed = 0.42 * dt;
+                    const speed = 0.05 * dt;
                     if (keys.left) player.x -= speed;
                     if (keys.right) player.x += speed;
                 }
@@ -330,19 +371,20 @@
                     spawnTimer = 0;
                     spawnDrop();
                     spawnEvery = Math.max(340, spawnEvery - 6);
-                    fallSpeed = Math.min(420, fallSpeed + 2.5);
+                    fallSpeed = Math.min(115, fallSpeed + 0.8);
                 }
 
                 for (let i = drops.length - 1; i >= 0; i--) {
                     const d = drops[i];
-                    d.y += d.vy * dt / 1000;
-                    d.wob += dt / 1000;
-                    d.x += Math.sin(d.wob) * (d.good ? 0.15 : 0.4);
+                    d.y += d.vy * dts;
+                    d.t += dts * d.freq;
+                    d.x = d.baseX + Math.sin(d.t) * d.amp;
 
                     const dx = d.x - player.x, dy = d.y - player.y;
-                    const rr = (d.r + player.r * 0.82);
+                    const rr = (d.r + player.r * 0.8);
                     if (dx * dx + dy * dy < rr * rr) {
                         drops.splice(i, 1);
+                        spawnBurst(d.x, d.y, d.good);
                         if (d.good) {
                             score += 1;
                             scoreEl.textContent = score;
@@ -358,26 +400,53 @@
                     if (d.y - d.r > H) drops.splice(i, 1);
                 }
 
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.life -= dts / p.maxLife;
+                    if (p.life <= 0) { particles.splice(i, 1); continue; }
+                    p.x += p.vx * dts;
+                    p.y += p.vy * dts;
+                    p.vy += (p.good ? 10 : 26) * dts;
+                    p.rot += p.vr * dts;
+                }
+
                 ctx.clearRect(0, 0, W, H);
 
-                ctx.strokeStyle = 'rgba(255,255,255,.08)';
+                ctx.strokeStyle = FG;
+                ctx.globalAlpha = 0.3;
+                ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.moveTo(0, H - 20);
-                ctx.lineTo(W, H - 20);
+                ctx.moveTo(0, H - 6);
+                ctx.lineTo(W, H - 6);
                 ctx.stroke();
+                ctx.globalAlpha = 1;
 
                 for (const d of drops) {
-                    if (d.good) drawHoney(d.x, d.y, d.r, d.wob);
-                    else drawBee(d.x, d.y, d.r, d.wob);
+                    if (d.good) drawHoney(d.x, d.y, d.r, d.t);
+                    else drawBee(d.x, d.y, d.r, d.t);
                 }
 
                 drawBear(player.x, player.y, player.r);
 
+                for (const p of particles) {
+                    ctx.globalAlpha = Math.max(0, p.life);
+                    const s = p.size * (0.5 + p.life * 0.5);
+                    if (p.good) drawStar(p.x, p.y, s, p.rot);
+                    else drawSplat(p.x, p.y, s, p.rot);
+                }
+                ctx.globalAlpha = 1;
+
                 for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc(W - 18 - i * 20, 20, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = i < player.lives ? '#dc4444' : 'rgba(255,255,255,.15)';
-                    ctx.fill();
+                    const lx = W - 6 - i * 5;
+                    if (i < player.lives) {
+                        ctx.fillStyle = FG;
+                        ctx.fillRect(lx - 1, 5, 3, 3);
+                    } else {
+                        ctx.strokeStyle = FG;
+                        ctx.globalAlpha = 0.35;
+                        ctx.strokeRect(lx - 1, 5, 3, 3);
+                        ctx.globalAlpha = 1;
+                    }
                 }
 
                 requestAnimationFrame(loop);
@@ -400,7 +469,7 @@
             function setPointerFromEvent(e) {
                 const rect = canvas.getBoundingClientRect();
                 const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
-                pointerX = clientX - rect.left;
+                pointerX = (clientX - rect.left) / PIXEL;
             }
 
             canvas.addEventListener('pointerdown', (e) => { setPointerFromEvent(e); tryStart(); });
