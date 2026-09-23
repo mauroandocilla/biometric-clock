@@ -27,8 +27,19 @@ def allowed_file(filename: str) -> bool:
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
 
+@bp.before_request
+def block_when_paused():
+    if current_app.config.get("MAINTENANCE_MODE") and request.endpoint not in (
+        "main.home",
+        "static",
+    ):
+        return render_template("maintenance.html", title="En pausa"), 503
+
+
 @bp.route("/")
 def home():
+    if current_app.config.get("MAINTENANCE_MODE"):
+        return render_template("maintenance.html", title="En pausa")
     return render_template("index.html", title="Home")
 
 

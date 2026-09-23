@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ title or "En pausa" }}</title>
+
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .bg-maintenance {
+            background:
+                radial-gradient(900px 500px at 50% -10%, rgba(244, 158, 66, .16), transparent 60%),
+                radial-gradient(800px 500px at 90% 110%, rgba(220, 68, 68, .12), transparent 60%),
+                #262f3d;
+        }
+
+        @media (prefers-color-scheme: light) {
+            .bg-maintenance {
+                background:
+                    radial-gradient(900px 500px at 50% -10%, rgba(244, 158, 66, .20), transparent 60%),
+                    radial-gradient(800px 500px at 90% 110%, rgba(220, 68, 68, .14), transparent 60%),
+                    #6b7a91;
+            }
+        }
+
+        @keyframes floatSoft {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .float-soft {
+            animation: floatSoft 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-zinc-100 antialiased grid place-items-center p-8 bg-maintenance">
+    <main class="w-full max-w-md text-center">
+        <img src="{{ url_for('static', filename='img/server-down.gif') }}" alt="Server down"
+            class="float-soft mx-auto w-64 md:w-80 rounded-2xl shadow-2xl shadow-black/50 ring-1 ring-white/10" />
+
+        <h1 class="mt-6 text-xl md:text-2xl font-semibold tracking-tight">Servicio en pausa</h1>
+        <p class="mt-2 text-zinc-300/80 text-sm md:text-base">
+            IESS CheckInOut está temporalmente fuera de servicio. Vuelve pronto.
+        </p>
+    </main>
+</body>
+
+</html>
